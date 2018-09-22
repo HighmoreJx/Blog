@@ -9,4 +9,4 @@
 
 |  主题  | 文章                                                                                                                               |
 | :----: | :--------------------------------------------------------------------------------------------------------------------------------- |
-| 编码风格 | [Objective—C 编码风格](./articles/Objective-C-Code Style.md)<br>[Objective—C 编码风格](./articles/Objective-C-Code Style.md)<br> |
+| 编码风格 | [Objective—C 编码风格](./articles/Objective-C-Code Style.md) |
