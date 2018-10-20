@@ -11,6 +11,6 @@
 |  主题  | 文章                                                                                                                               |
 | :----: | :--------------------------------------------------------------------------------------------------------------------------------- |
 | 编码风格 | [Objective—C 编码风格](https://github.com/HighmoreJx/Blog/blob/master/articles/Objective-C-Code%20Style.md) |
-| 面试小题 | [delegate与datasource](https://github.com/HighmoreJx/Blog/blob/master/articles/OC%E8%AF%AD%E6%B3%95/delegate%E4%B8%8Edatasoure.md) |
+| 面试小题 | [delegate与datasource](https://github.com/HighmoreJx/Blog/blob/master/articles/%E9%9D%A2%E8%AF%95%E5%B0%8F%E9%A2%98/delegate%E4%B8%8Edatasoure.md) |
 
 
