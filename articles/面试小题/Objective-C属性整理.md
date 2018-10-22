@@ -50,7 +50,7 @@
 * 默认的实例变量名称就不是personName了,而是_personName.
 * Objective-C为我们提供了.语法糖, 让我们可以更优雅的使用setter/getter
 * 我们可以用synthesize来重新给实力变量命名
-* dynamic可以紧致自动合成方法,由程序猿自己编写
+* dynamic可以禁止自动合成方法,由程序猿自己编写
 
 # 语义
 ## 原子性
