@@ -1,4 +1,3 @@
-
 ## 前言
 
 iOS开发应该很熟悉weak关键字了,主要用于避免循环引用所带来的内存泄露问题.常见的使用场景有delegate, block等. 简单来说: 弱引用, 在对象释放后置位nil, 避免错误的内存访问.
@@ -184,7 +183,7 @@ static unsigned int indexForPointer(const void *p) {
 
 ### 从宿舍管理到SideTables
 
-假设要给80个学生安排宿舍,同时要保证学生的财产安全应该怎么安排？
+假设要给80个学生安排宿舍,同时要保证学生的财产安全应该怎么安排？(这个例子来源于引用的最后一篇，我觉得很好理解)
 
 给80个学生分别安排80间宿舍,然后给每个宿舍大门上锁.  
 这样太浪费资源了,而且会大致宿舍太多维护起来很费劲.
@@ -792,6 +791,32 @@ static void remove_referrer(weak_entry_t *entry, objc_object **old_referrer)
 
 remove_referrer函数负责删除一个弱引用。函数首先处理inline数组的情况，直接将对应的弱引用项置空。如果使用了outline数组，则通过hash找到要删除的项，并直接删除。过程和weak_table_t对应的操作基本相同  
 
+### 释放
+
+释放时,调用clearDeallocating函数
+```
+void 
+objc_object::sidetable_clearDeallocating()
+{
+    SideTable& table = SideTables()[this];
+
+    // clear any weak table items
+    // clear extra retain count and deallocating bit
+    // (fixme warn or abort if extra retain count == 0 ?)
+    table.lock();
+    RefcountMap::iterator it = table.refcnts.find(this);
+    if (it != table.refcnts.end()) {
+        if (it->second & SIDE_TABLE_WEAKLY_REFERENCED) {
+            weak_clear_no_lock(&table.weak_table, (id)this);
+        }
+        table.refcnts.erase(it);
+    }
+    table.unlock();
+}
+```
+对象析构的时候，会先找到对应的SideTable，然后在RefcountMap查找到其引用计数部分,看起标志位是否支持SIDE_TABLE_WEAKLY_REFERENCED.支持的话就去调用weak_clear_no_lock.weak_clear_no_lock上面已经有具体分析了.删除一个object所有的weak引用,并且清理其空间.把所有weak对象置位nil.最后从weak_table中将其对应的entry删除，
+
+
 
 ## 总结
 
@@ -804,4 +829,5 @@ Runtime维护一个全局的SideTables表. 利用Hash算法+分离锁将对象�
 [iOS weak关键字漫谈](https://zhuanlan.zhihu.com/p/27832890)  
 [weak 弱引用的实现方式](http://www.desgard.com/iOS-Source-Probe/Objective-C/Runtime/weak%20%E5%BC%B1%E5%BC%95%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F.html)  
 [Objective-C 引用计数原理](http://yulingtianxia.com/blog/2015/12/06/The-Principle-of-Refenrence-Counting/)  
-[OC Runtime之Weak](https://www.jianshu.com/p/045294e1f062)  
+[OC Runtime之Weak](https://www.jianshu.com/p/045294e1f062)   
+[iOS管理对象内存的数据结构以及操作算法](https://www.jianshu.com/p/ef6d9bf8fe59)  
