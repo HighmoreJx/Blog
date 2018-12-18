@@ -53,20 +53,46 @@ while (alive) {
 
 ### callout_to_observer
 
+```
+if (rlm->_observerMask & kCFRunLoopBeforeTimers) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeTimers);
+if (rlm->_observerMask & kCFRunLoopBeforeSources) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeSources);
+```
+上面是从源码里面截取下来的片段,通过命名(kCFRunLoopBeforeTimers,kCFRunLoopBeforeSources)可以看出,主要是通知外部,即将(before)处理什么任务.  
+
+DoObservers-Timer: 通知外部即将处理timer  
+DoObservers-Source: 通知外部即将处理source 
+DoObservers-Activity: 通知外部自己的当前状态
+
+```
+typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
+    kCFRunLoopEntry = (1UL << 0),
+    kCFRunLoopBeforeTimers = (1UL << 1),
+    kCFRunLoopBeforeSources = (1UL << 2),
+    kCFRunLoopBeforeWaiting = (1UL << 5),
+    kCFRunLoopAfterWaiting = (1UL << 6),
+    kCFRunLoopExit = (1UL << 7),
+    kCFRunLoopAllActivities = 0x0FFFFFFFU
+};
+```
+
+
+
+
+#### DoObservers-Activity
 
 ### performTask
 执行task的方式有多种,有些可以被开发者使用,有些则只能被系统使用.  
 
 #### DoBlocks()
 
-这种方式可以被开发者使用, 使用方式比较简单.
-`void CFRunLoopPerformBlock(CFRunLoopRef rl, CFTypeRef mode, void (^block)(void));`
+这种方式可以被开发者使用, 使用方式比较简单.  
+`void CFRunLoopPerformBlock(CFRunLoopRef rl, CFTypeRef mode, void (^block)(void));`  
 
 详细使用方式可[参考文档](https://developer.apple.com/documentation/corefoundation/1542985-cfrunloopperformblock?language=objc)
 
 通过函数签名可以看出,block插入队列的时候,会绑定到某个具体的runloop mode.这个后续会简单讲下runloop mode.  
-绑定好以后, runloop在执行的时候, 会通过runloop的循环中的如下代码来执行队列里的所有block.   
-`__CFRunLoopDoBlocks(rl, rlm);`
+绑定好以后, runloop在执行的时候, 会通过runloop的循环中的如下代码来执行队列里的所有block.    
+`__CFRunLoopDoBlocks(rl, rlm);`  
 rlm是CFRunLoopModeRef, 这边也可以看出,只会执行和某个mode相关的所有block.  
 
 #### DoSources0()
@@ -82,6 +108,16 @@ source0有公开的API可以供开发者调用,source1只能供系统调用.sour
 详细使用方式可[参考文档](https://developer.apple.com/documentation/corefoundation/1542679-cfrunloopsourcecreate?language=objc)  
 
 #### DoSources1()
+
+不对开发者开放,系统会使用它来执行一些内部任务,比如渲染UI.  
+
+#### DoTimers
+开发者使用NSTimer相关API注册被执行的任务,runloop通过一下API执行相关任务:  
+`__CFRunLoopDoTimers(rl, rlm, mach_absolute_time());`  
+
+#### DoMainQueue
+开发者调用CGD的API将任务放到main queue中,runloop通过如下API执行被调度的任务:  
+`_dispatch_main_queue_callback_4CF(msg);`
 
 ### sleep
 
