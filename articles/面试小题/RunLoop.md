@@ -59,9 +59,9 @@ if (rlm->_observerMask & kCFRunLoopBeforeSources) __CFRunLoopDoObservers(rl, rlm
 ```
 上面是从源码里面截取下来的片段,通过命名(kCFRunLoopBeforeTimers,kCFRunLoopBeforeSources)可以看出,主要是通知外部,即将(before)处理什么任务.  
 
-DoObservers-Timer: 通知外部即将处理timer  
-DoObservers-Source: 通知外部即将处理source 
-DoObservers-Activity: 通知外部自己的当前状态
+DoObservers-Timer: 通知外部即将处理timer    
+DoObservers-Source: 通知外部即将处理source    
+DoObservers-Activity: 通知外部自己的当前状态  
 
 ```
 typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
@@ -75,7 +75,7 @@ typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
 };
 ```
 
-
+ 
 
 
 #### DoObservers-Activity
