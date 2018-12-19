@@ -75,7 +75,16 @@ typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
 };
 ```
 
- 
+kCFRunLoopEntry: 每次runloop进入时的activity,runloop每一次进入一个mode,就通知一次外部kCFRunLoopEntry,之后会一直以该mode进行,直到当前mode被终止,进而切换到其他mode,并在此通知kCFRunLoopEntry.
+
+kCFRunLoopBeforeTimers, kCFRunLoopBeforeSources: 即将处理timer,source.
+
+kCFRunLoopBeforeWaiting:当前线程即将可能进入睡眠,如果能从内核队列上读出msg则继续进行任务,如果当前队列上没有多余消息,则进入睡眠状态.  
+`__CFRunLoopServiceMachPort(waitSet, &msg, sizeof(msg_buffer), poll ? 0 : TIMEOUT_INFINITY);`  
+
+kCFRunLoopAfterWaiting: 线程从睡眠状态中恢复过来,即mach_msg从队列中读出了msg,可以继续执行任务了.这是每一次runloop从idle状态中恢复必调的一个activity,如果想设计一个工具检测runloop的执行周期,这个activity就可作为周期的开始.  
+
+kCFRunLoopExit: 退出,切换mode的时候可能会调用这个activity.  
 
 
 #### DoObservers-Activity
@@ -120,7 +129,10 @@ source0有公开的API可以供开发者调用,source1只能供系统调用.sour
 `_dispatch_main_queue_callback_4CF(msg);`
 
 ### sleep
+有任务就执行,没任务就休眠.  
 
 ### 完整流程
+
+
 
 ## Runloop Mode
