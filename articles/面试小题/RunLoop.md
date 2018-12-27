@@ -156,18 +156,24 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         if (rlm->_observerMask & kCFRunLoopBeforeTimers) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeTimers);
         if (rlm->_observerMask & kCFRunLoopBeforeSources) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeSources);
 
+	//执行DoBlocks
 	__CFRunLoopDoBlocks(rl, rlm);
 
+	//执行DoSources0
         Boolean sourceHandledThisLoop = __CFRunLoopDoSources0(rl, rlm, stopAfterHandle);
         if (sourceHandledThisLoop) {
+	    //如果有source0, 则执行DoBlocks.
             __CFRunLoopDoBlocks(rl, rlm);
 	}
 
+	// 如果处理了source0 或者 超时了
         Boolean poll = sourceHandledThisLoop || (0LL == timeout_context->termTSR);
 
         if (MACH_PORT_NULL != dispatchPort && !didDispatchPortLastTime) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+	    //从缓冲区提取消息
             msg = (mach_msg_header_t *)msg_buffer;
+	    //从dispat端口读取消息,注意最后一个参数是0.如果没有读到消息是不会进入睡眠期的
             if (__CFRunLoopServiceMachPort(dispatchPort, &msg, sizeof(msg_buffer), 0)) {
                 goto handle_msg;
             }
