@@ -173,7 +173,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 	    //从缓冲区提取消息
             msg = (mach_msg_header_t *)msg_buffer;
-	    //从dispat端口读取消息,注意最后一个参数是0.如果没有读到消息是不会进入睡眠期的
+	    //从dispat端口读取消息,注意最后一个参数是0.如果没有读到消息是不会进入睡眠期的,会立即返回
+	    //这种设计应该是为了保障 dispatch 到 main queue 的代码总是有较高的机会得以运行
             if (__CFRunLoopServiceMachPort(dispatchPort, &msg, sizeof(msg_buffer), 0)) {
                 goto handle_msg;
             }
