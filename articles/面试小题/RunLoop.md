@@ -187,6 +187,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 
         didDispatchPortLastTime = false;
 
+    // 如果之前处理了source0消息,那么就不会再observer-beforewaiting了
 	if (!poll && (rlm->_observerMask & kCFRunLoopBeforeWaiting)) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeWaiting);
 	__CFRunLoopSetSleeping(rl);
 	// do not do any user callouts after this point (after notifying of sleeping)
@@ -206,10 +207,9 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             memset(msg_buffer, 0, sizeof(msg_buffer));
         }
         msg = (mach_msg_header_t *)msg_buffer;
+        //  如果消息队列没有消息 且 之前没有处理source0消息,则进入休眠状态
         __CFRunLoopServiceMachPort(waitSet, &msg, sizeof(msg_buffer), poll ? 0 : TIMEOUT_INFINITY);
 #elif DEPLOYMENT_TARGET_WINDOWS
-        // Here, use the app-supplied message queue mask. They will set this if they are interested in having this run loop receive windows messages.
-        // Note: don't pass 0 for polling, or this thread will never yield the CPU.
         __CFRunLoopWaitForMultipleObjects(waitSet, NULL, poll ? 0 : TIMEOUT_INFINITY, rlm->_msgQMask, &livePort, &windowsMessageReceived);
 #endif
         
@@ -227,6 +227,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 
         // user callouts now OK again
 	__CFRunLoopUnsetSleeping(rl);
+    // 如果之前处理了source0消息,那么就不会再observer-afterwaiting了
 	if (!poll && (rlm->_observerMask & kCFRunLoopAfterWaiting)) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopAfterWaiting);
 
         handle_msg:;
@@ -272,8 +273,10 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             dueTime.QuadPart = LONG_MIN;
             SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
 #endif
+        // task: 处理timers
 	    __CFRunLoopDoTimers(rl, rlm, mach_absolute_time());
         } else if (livePort == dispatchPort) {
+        // task: 处理main queue
 	    __CFRunLoopModeUnlock(rlm);
 	    __CFRunLoopUnlock(rl);
             _CFSetTSD(__CFTSDKeyIsInGCDMainQ, (void *)6, NULL);
@@ -288,6 +291,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
  	    sourceHandledThisLoop = true;
             didDispatchPortLastTime = true;
         } else {
+            // 处理source1
             // Despite the name, this works for windows handles as well
             CFRunLoopSourceRef rls = __CFRunLoopModeFindSourceForMachPort(rl, rlm, livePort);
             if (rls) {
@@ -336,5 +340,24 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 
 ```
 
-
 ## Runloop Mode
+
+文章前面介绍API等的时候,都反反复复提到了一个概念: Mode.  
+我们接下来会围绕Mode来展开.  
+
+### Mode的结构
+```
+struct __CFRunLoopMode {
+    ...
+    CFStringRef _name;
+    CFMutableSetRef _sources0;
+    CFMutableSetRef _sources1;
+    CFMutableArrayRef _observers;
+    CFMutableArrayRef _timers;
+    CFMutableDictionaryRef _portToV1SourceMap;
+    CFIndex _observerMask;
+	...
+};
+```
+
+
