@@ -345,7 +345,10 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 文章前面介绍API等的时候,都反反复复提到了一个概念: Mode.  
 我们接下来会围绕Mode来展开.  
 
-### Mode的结构
+### Mode的总览
+
+![Mode与RunLoop](https://blog.ibireme.com/wp-content/uploads/2015/05/RunLoop_0.png)
+
 ```
 struct __CFRunLoopMode {
     ...
@@ -358,6 +361,71 @@ struct __CFRunLoopMode {
     CFIndex _observerMask;
 	...
 };
+
+struct __CFRunLoop {
+    CFMutableSetRef _commonModes;     // Set
+    CFMutableSetRef _commonModeItems; // Set<Source/Observer/Timer>
+    CFRunLoopModeRef _currentMode;    // Current Runloop Mode
+    CFMutableSetRef _modes;           // Set
+    ...
+};
 ```
+
+一个RunLoop包含若干个Mode.每个Mode包含若干个Source/Timer/Observer. 每次调用RunLoop的主函数时,只能指定其中一个Mode,即_currentMode.如果要切换Mode,就只能退出Loop,重新指定一个Mode后再进入.  
+
+我们注意到RunLoop中出现了items, 那item又是什么呢? 我们之前提到的Source/Timer/Observer实际上就是model item.一个item可以被同时加入多个mode.但一个item被重复加入同一个mode是不会有效果的.如果一个mode中一个item都没有,则RunLoop会直接退出,不进入循环. 
+
+以doTimers为例
+```
+static Boolean __CFRunLoopDoTimers(CFRunLoopRef rl, CFRunLoopModeRef rlm, int64_t limitTSR) {	/* DOES CALLOUT */
+    for (CFIndex idx = 0, cnt = rlm->_timers ? CFArrayGetCount(rlm->_timers) : 0; idx < cnt; idx++) {
+		...
+    }
+    return timerHandled;
+}
+```
+mode定义的数据结构里,包含了执行任务和通知外部所需要的信息. 上面的代码执行doTimer时,就只需要将 _timers 遍历并 invoke 即可.
+
+
+### Mode的分类
+
+简单来说, mode分为两类: common mode和private mode.  
+
+公开的mode: http://iphonedevwiki.net/index.php/CFRunLoop
+
+我们熟悉的kCFRunLoopDefaultMode 和 UITrackingRunLoopMode就是common mode.kCFRunLoopDefaultMode是默认模式下runloop使用的mode,scrollview滑动时切换到UITrackingRunLoopMode.  
+
+系统定义了一些private mode.比如 UIInitializationRunLoopMode 和 GSEventReceiveRunLoopMode.
+
+kCFRunLoopCommonModes比较特殊一些, 是一个占位用的Mod.既然是占位符,为什么会有下面的写法呢?  
+```
+[[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+```
+我们回过头看RunLoop的结构,有两个成员变量_commonModes,_commonModeItems.commonModes可以理解为存放所有common型的Mode的集合,每当RunLoop的内容发生改变时,_commonModeItems里的Source/Observer/Timer同步到_commonModes存放的Mode中.上面的代码段简单来说就是把timer加入到_commonModeItems的集合里面.
+
+
+#### Mode切换的经典问题-NSTimer
+
+列表滑动时, 定时器不会被触发?
+
+NSTimer默认只会调度到kCFRunLoopDefaultMode 模式下,当scrollview滑动时,runloop会进入UITrackingRunLoopMode.那么在doTimer时,遍历当前mode的timers数组时,就无法找到.自然也就不会触发NSTimer的任务.
+
+怎么解决呢?  
+
+不能执行的原因是滑动时的Mode不含有timer, 那我们timer加入到UITrackingRunLoopMode不就可以了?
+```
+[[NSRunLoop mainRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
+[[NSRunLoop mainRunLoop] addTimer:timer forMode: UITrackingRunLoopMode];
+```
+
+不过连续写两句类似的代码是有点奇怪哦.我们回想下NSDefaultRunLoopMode和UITrackingRunLoopMode都是common mode.之前我们已经提到过了,commonModeItems集合里的元素会自动被加入到common型的Mode里,那我们直接把其加入到commonModeItems不就可以了?
+```
+[[NSRunLoop mainRunLoop] addTimer:timer forMode: NSRunLoopCommonModes]; 
+```
+
+这样就支持所有的情况了吗?很显然不是的, 还有很多private Mode.如果runLoop处于任何一种private Mode下,那定时器还是不会被触发的.但是一般情况已经满足了,如果真的对精度有那么高要求,相比也不会用NSTimer.
+
+还有GCD定时器等方法就不介绍了.  
+
 
 
