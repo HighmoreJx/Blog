@@ -1,4 +1,3 @@
-
 ## 前言
 
 > [闭包](https://zh.wikipedia.org/wiki/%E9%97%AD%E5%8C%85_(%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6)): 又称词法闭包和函数闭包,是引用了自由变量的函数.这个被引用的自由变量将和这个函数一同存在,即使已经离开了创造它的环境也不例外.所以,有另一种说法认为闭包是函数和其相关的引用环境组合而成的实体.  
@@ -96,5 +95,77 @@ struct Block_layout {
 
 ### Block类型
 
+下面我们会分别介绍Block的几种类型,每种类型会结合实际代码及工具翻译的C代码来帮助理解.
+
+#### NSConcreteGlobalBlock
+
+```Objective-C
+#import <Foundation/Foundation.h>
+int main(int argc, const char * argv[]) {
+    void(^myBlock)(void) = ^{};
+    NSLog(@"%@", myBlock);
+    myBlock();
+    return 0;
+}
+```
+输出  
+`<__NSGlobalBlock__: 0x100001058>  `
+
+转换C代码
+```C
+
+我们定位到main函数可以看到如下代码
+int main(int argc, const char * argv[]) {
+    // void(^myBlock)(void) = ^{};
+    void(*myBlock)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA));
+
+    // NSLog(@"%@", myBlock);
+    NSLog((NSString *)&__NSConstantStringImpl__var_folders_07_p4zsgcc12dsbg_1gbhy9km5m0000gn_T_main_5c5bdd_mi_0, myBlock);
+
+    //myBlock();
+    ((void (*)(__block_impl *))((__block_impl *)myBlock)->FuncPtr)((__block_impl *)myBlock);
+
+    return 0;
+}
+```
+看上去比较烦躁,但一一对应下来还是比较清晰的.  
+首先第一句代码牵涉到了一些数据结构,我们可以在转换后的代码找到.  
+```C
+struct __block_impl {
+  void *isa;
+  int Flags;
+  int Reserved;
+  void *FuncPtr;
+};
 
 
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int flags=0) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+}
+
+static struct __main_block_desc_0 {
+  size_t reserved;
+  size_t Block_size;
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+```
+
+__main_block_impl_0就是我们最后生成的Block数据结构,他的构造函数分别接受fp, desc, flags三个参数.
+* fp - 函数指针,指向block具体的执行函数
+* desc - block附加描述信息,这里主要有内存大小size,和保留信息reserved
+* flags - 源码上定义的枚举,上面介绍block结构时提到过.
+
+
+
+#### NSConcreteStackBlock
+
+#### NSConcreteMallocBlock
