@@ -164,8 +164,26 @@ __main_block_impl_0就是我们最后生成的Block数据结构,他的构造函�
 * desc - block附加描述信息,这里主要有内存大小size,和保留信息reserved
 * flags - 源码上定义的枚举,上面介绍block结构时提到过.
 
-
+细心的同学可以发现, 我们控制台直接打印出来的是globalBlock,但是转换成C代码以后,isa又赋值的_NSConcreteStackBlock.使用clang改写和LLVM具体实现内容实际是不同的,不用太纠结,以LLVM为准.  
 
 #### NSConcreteStackBlock
+
+```Objective-C
+int main(int argc, const char * argv[]) {
+    int i = 5;
+    NSLog(@"%@", ^{NSLog(@"********%d", i);});
+    return 0;
+}
+```
+输出  
+`<__NSStackBlock__: 0x7ffeefbff568>`
+转换成C代码  
+```
+int main(int argc, const char * argv[]) {
+    int i = 5;
+    NSLog((NSString *)&__NSConstantStringImpl__var_folders_07_p4zsgcc12dsbg_1gbhy9km5m0000gn_T_main_860511_mi_0, ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, i)));
+    return 0;
+}
+```
 
 #### NSConcreteMallocBlock
