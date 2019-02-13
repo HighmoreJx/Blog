@@ -374,8 +374,17 @@ static void _Block_byref_assign_copy(void *dest, const void *arg, const int flag
 }
 ```
 
+代码偏多我们就直接看重点了.
+```
+struct Block_byref *copy = (struct Block_byref *)_Block_allocator(src->size, false, isWeak);
+        copy->flags = src->flags | _Byref_flag_initial_value; // non-GC one for caller, one for stack
+        copy->forwarding = copy; // patch heap copy to point to itself (skip write-barrier)
+        src->forwarding = copy;  // patch stack to point to heap copy
+        copy->size = src->size;
+```
+这边可以看到,_Block_allocator重新分配了一块堆内存给Block_byref(也就是我们之前说的copy栈到堆).然后是forwarding的指向,源Block_byref的forwarding指向了堆内存中的Block_byref. 而堆内存的forwarding指向了自己.
 
-
+![block_forwarding](https://raw.githubusercontent.com/HighmoreXu/BlogImage/master/images/block_forwarding.jpg)
 
 
 
