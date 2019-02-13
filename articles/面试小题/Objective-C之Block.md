@@ -386,5 +386,32 @@ struct Block_byref *copy = (struct Block_byref *)_Block_allocator(src->size, fal
 
 ![block_forwarding](https://raw.githubusercontent.com/HighmoreXu/BlogImage/master/images/block_forwarding.jpg)
 
+我们再回过头看代码的一堆forwarding就很清晰了.
+```
+(i->__forwarding->i)++
+```
+Block_byref在由栈拷贝到堆以后,最后操作的都是堆上的Block_byref.因为value属于堆内存,所以即使外部变量int在栈上,其在作用域范围结束后变量释放,也不会影响到Block对捕获到的value的使用,同时每一次更改也会被存储下来.
 
+#### block捕获OC对象
+
+```
+nt main(int argc, const char * argv[]) {  
+    __block id block_obj = [[NSObject alloc]init];
+    id obj = [[NSObject alloc]init];
+
+    NSLog(@"block_obj = [%@ , %p] , obj = [%@ , %p]",block_obj , &block_obj , obj , &obj);
+    
+    void (^myBlock)(void) = ^{
+        NSLog(@"***Block中****block_obj = [%@ , %p] , obj = [%@ , %p]",block_obj , &block_obj , obj , &obj);
+    };
+    
+    myBlock();
+    return 0;
+}
+```
+
+```
+block_obj = [<NSObject: 0x10304b380> , 0x7ffeefbff538] , obj = [<NSObject: 0x10300ea90> , 0x7ffeefbff508]
+***Block中****block_obj = [<NSObject: 0x10304b380> , 0x1005096e8] , obj = [<NSObject: 0x10300ea90> , 0x100503c10]
+```
 
