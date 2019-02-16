@@ -3,8 +3,8 @@
 
 ## 基础概念
 
-浅复制: 指针拷贝, 仅仅拷贝指向对象的指针
-深复制: 内容拷贝, 会拷贝对象本身
+浅复制: 指针拷贝, 仅仅拷贝指向对象的指针  
+深复制: 内容拷贝, 会拷贝对象本身  
 
-这个结论本身是没有问题的, 不过
+[Object copying](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/ObjectCopying.html)
 
