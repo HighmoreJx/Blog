@@ -41,7 +41,7 @@ person1.name = @"one";
 person2.name = @"two";
 ```
 
-最后发现 ~ person1 和 person2 居然重名了…
+最后发现 ~ person1 和 person2 居然重名了…  
 🧐 我们说过, 拷贝的意图在于产生一份相同的数据, 然后可以任意修改且不影响原始版本. 很明显上面的例子根本不符合条件. 所以根本不是拷贝.  
 
 严肃一点看下官网:  [Object copying](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/ObjectCopying.html)  
