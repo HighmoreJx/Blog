@@ -37,11 +37,11 @@ Person *person2 = person1;
 🤥 这是OC对象的拷贝.
 
 ```
-person1.name = @"one";
-person2.name = @"two";
+person1.age = 10;
+person2. age = 20;
 ```
 
-最后发现 ~ person1 和 person2 居然重名了…  
+最后发现 ~ person1 和 person2 居然同岁了…  
 🧐 我们说过, 拷贝的意图在于产生一份相同的数据, 然后可以任意修改且不影响原始版本. 很明显上面的例子根本不符合条件. 所以根本不是拷贝.  
 
 严肃一点看下官网:  [Object copying](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/ObjectCopying.html)  
@@ -49,6 +49,35 @@ person2.name = @"two";
 >  If you receive an object from elsewhere in an application but do not copy it, you share the object with its owner (and perhaps others), who might change the encapsulated contents  
 
 简单来说, 上面的例子只是多了一个持有关系, 根本不是拷贝! 只有两个值类型对象的赋值才完全符合我们对拷贝的认知.
+
+😳 很懵逼, 那OC对象要怎么拷贝? 
+🧐 是时候看看[苹果官方文档]([NSCopying - Foundation | Apple Developer Documentation](https://developer.apple.com/documentation/foundation/nscopying?language=objc))了.  
+
+😀 简单来说, 就是要实现NSCoying协议.  
+```
+#import "Person.h"
+
+@interface Person()<NSCopying>
+@end
+
+@implementation Person
+- (id)copyWithZone:(NSZone *)zone {
+    Person *object = [[[self class] allocWithZone:zone] init];
+    return object;
+}
+@end
+
+Person *person1 = [[Person alloc] init];
+Person *person2 = [person1 copy];
+person1.age = 10;
+person2.age = 20;
+```
+这个时候通过输出, 我们可以发现两个人的年纪已经不同了.
+
+😃 这完全符合我们对拷贝的定义. 程序从堆中开辟出了完全独立的空间重新构造了person2对象. 我们对person2的操作完全独立与person1.
+
+😈一切真的这么简单吗?
+
 
 
 ## 基础概念
