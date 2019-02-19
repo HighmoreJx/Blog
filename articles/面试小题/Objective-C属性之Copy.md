@@ -9,7 +9,7 @@
 🧐 拷贝的场景是啥?  
 😃: 我们回到熟悉的抄作业. 每当暑假要完的时候, 我们总会在临近前的最后一天疯狂抄大佬的作业. 这个就是拷贝最好的例子了.    
 🧐  一模一样会不会被老师抓?
-🤫: 咳咳. 对, 抓紧改几道题的答案. 你的改动会不会影响到大佬的那份? 显然是不会的.  
+🤫: 咳咳. 对, 抓紧改几道题的答案. 你的改动会不会影响到大佬的那份? 显然是不会的.    
 😶 我头铁, 我一个字都不想改.  
 😈: 你是在挑战老师的智商吗? 名字都抄一样的.你这拷贝毫无意义, 结局都是GG.  
 
@@ -28,7 +28,7 @@ NSInteger是值类型, 上面就是最简单的一次拷贝.
 ```
 @interface Person : NSObject
 @property (nonatomic, assign) int age;
-@property (nonatomic, copy) NSString *name;
+@property (nonatomic, strong) NSMuatableString *name;
 @end
 
 Person *person1 = [[Person alloc] init];
@@ -61,8 +61,17 @@ person2. age = 20;
 @end
 
 @implementation Person
+- (id)init {
+    if (self = [super init]) {
+        _name = [[NSMutableString alloc] initWithString:@"mike"];
+    }
+    return self;
+}
+
 - (id)copyWithZone:(NSZone *)zone {
     Person *object = [[[self class] allocWithZone:zone] init];
+    object.name = _name;
+    object.age = _age;
     return object;
 }
 @end
@@ -77,6 +86,22 @@ person2.age = 20;
 😃 这完全符合我们对拷贝的定义. 程序从堆中开辟出了完全独立的空间重新构造了person2对象. 我们对person2的操作完全独立与person1.
 
 😈一切真的这么简单吗?
+```
+[person2.name insertString:@"funny " atIndex:0];
+```
+灵异的事情发生了, person1也被改了.这就完全不符合拷贝的意图了.  
+
+那么问题出在哪里了呢?  
+`object.name = _name;`  
+上面说过这个根本不是拷贝, 这是多了一个持有关系而已(多了一个引用).相当于一个盒子有两把钥匙, 盒子里面装的东西变了, 那随便你用哪把钥匙打开盒子, 最后里面的东西肯定是最新放入的.  
+指针对象虽然被拷贝了, 但两者还是指向同一块内存空间.  
+
+### 深拷贝与浅拷贝
+
+![object copy](https://joeshang.github.io/images/blog/ios-object-copy.png)
+
+
+
 
 
 
