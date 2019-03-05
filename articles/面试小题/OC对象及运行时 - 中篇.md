@@ -65,7 +65,9 @@ nonpointer: 0 - raw isa,即当前的联合体只有cls, 没有结构体的部分
 
 has_assoc: 对象含有或者曾经含有关联引用，没有关联引用的可以更快地释放内存.  
 
-has_cxx_dtor: 
+has_cxx_dtor: 该对象是否有 C++ 或者 Objc 的析构器.  
+
+shiftcls: 类的指针, arm64架构有33位存储类指针.  
 
 
 
