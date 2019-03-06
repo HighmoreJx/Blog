@@ -68,6 +68,44 @@ has_assoc: 对象含有或者曾经含有关联引用，没有关联引用的可
 has_cxx_dtor: 该对象是否有 C++ 或者 Objc 的析构器.  
 
 shiftcls: 类的指针, arm64架构有33位存储类指针.  
+```
+isa.shiftcls = (uintptr_t)cls >> 3;
+```
+将当前地址右移三位的主要原因是用于将 Class 指针中无用的后三位清除减小内存的消耗，因为类的指针要按照字节（8 bits）对齐内存，其指针后三位都是没有意义的0.  [从 NSObject 的初始化了解 isa](https://github.com/draveness/analyze/blob/master/contents/objc/%E4%BB%8E%20NSObject%20%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96%E4%BA%86%E8%A7%A3%20isa.md#shiftcls)  
+
+
+magic: 判断对象是否初始化完成，在arm64中0x16是调试器判断当前对象是真的对象还是没有初始化的空间.  
+
+weakly_referenced: 对象被指向或者曾经指向一个 ARC 的弱变量，没有弱引用的对象可以更快释放.    
+
+deallocating: 对象是否正在释放内存.  
+
+has_sidetable_rc: 判断该对象的引用计数是否过大，如果过大则需要其他散列表来进行存储.  
+
+extra_rc:  存放该对象的引用计数值减一后的结果。对象的引用计数超过 1，会存在这个这个里面，如果引用计数为 10，extra_rc的值就为 9.  
+
+
+[weak分析](https://github.com/HighmoreJx/Blog/blob/master/articles/%E9%9D%A2%E8%AF%95%E5%B0%8F%E9%A2%98/Objective-C%E5%B1%9E%E6%80%A7%E4%B9%8BWeak.md)文章介绍了一个全局散列表存储引用计数,isa就是对其进行的优化, extra_rc的19位存储引用计数的值减一, 如果存不下了,就还是走散列表那一套.  
+
+## Tagged Pointer
+
+上面我们已经提到过指针大小在arm64下占64位, 所以其实某些情况直接把指针指向的内容存到指针中也未尝不可.  
+
+![](https://img.halfrost.com/Blog/ArticleImage/23_10.png)
+
+NSNumber、NSDate一类的变量本身的值需要占用的内存大小常常不需要8个字节，拿整数来说，4个字节所能表示的有符号整数就可以达到20多亿（注：2^31=2147483648，另外1位作为符号位)，对于绝大多数情况都是可以处理的.
+
+![](https://img.halfrost.com/Blog/ArticleImage/23_11.png)  
+
+把NSNumber的数据封装到NSNumber的指针中, 就可以节约8个字节.  
+
+特点:  
+* 专门存小对象, NSNumber/NSDate和NSString. 
+* 指针的值不再是地址, 而是存放真正的内容.  
+* 它不是一个对象, 内存不在堆中, 没有isa.不用malloc和free所以创建销毁很快.  
+* 若对象指针的最低有效位为奇数，则该指针为Tagged Pointer.  
+
+tagged pointer怎么存放数据的可以看 [iOS Tagged Pointer](https://www.jianshu.com/p/e354f9137ba8)  
 
 
 
