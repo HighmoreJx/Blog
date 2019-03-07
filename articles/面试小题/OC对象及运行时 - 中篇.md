@@ -107,13 +107,90 @@ NSNumber、NSDate一类的变量本身的值需要占用的内存大小常常不
 
 tagged pointer怎么存放数据的可以看 [iOS Tagged Pointer](https://www.jianshu.com/p/e354f9137ba8)  
 
+## class_data_bits_t
+
+```
+struct class_data_bits_t {
+    uintptr_t bits;
+}
+
+class_rw_t *data() { 
+   return bits.data();
+}
+
+class_rw_t* data() {
+    return (class_rw_t *)(bits & FAST_DATA_MASK);
+ }
+
+#define FAST_DATA_MASK          0x00007ffffffffff8UL
+```
+
+bits占64位, 其中4-48位代表data.这个data指向class_wt结构体.该结构体包含了类的属性,方法,协议等信息.   
+
+```
+struct class_rw_t {
+    uint32_t flags;
+    uint32_t version;
+
+    const class_ro_t *ro;
+
+    method_array_t methods;
+    property_array_t properties;
+    protocol_array_t protocols;
+
+    Class firstSubclass;
+    Class nextSiblingClass;
+};
+```
+
+method_array_t, property_array_t, protocol_array_t可以很容易理解到, 方法,属性,协议信息是存放在class_rw_t中的.  
+
+```
+struct class_ro_t {
+    uint32_t flags;
+    uint32_t instanceStart;
+    uint32_t instanceSize;
+    uint32_t reserved;
+    const uint8_t * ivarLayout;
+    const char * name;
+    method_list_t * baseMethodList;
+    protocol_list_t * baseProtocols;
+    const ivar_list_t * ivars;
+
+    const uint8_t * weakIvarLayout;
+    property_list_t *baseProperties;
+};
+```
+
+rw代表readwrite, ro代表readonly. ro代表的是编译期确定的内容, 是只读的. rw代表运行时内容, 是可修改的.  
+
+编译器的结构如下图所示:  
+![](https://raw.githubusercontent.com/HighmoreXu/BlogImage/master/images/objc-method-before-realize.png)
+
+接下来会进行resize的操作.  
+```
+const class_ro_t *ro = (const class_ro_t *)cls->data();
+class_rw_t *rw = (class_rw_t *)calloc(sizeof(class_rw_t), 1);
+rw->ro = ro;
+rw->flags = RW_REALIZED|RW_REALIZING;
+cls->setData(rw);
+
+```
+其内存布局会如下图所示:  
+![](https://raw.githubusercontent.com/HighmoreXu/BlogImage/master/images/objc-method-after-realize-class.png)
+
+
+接下来我们简单看下差异.  
+
+rw和ro都有方法列表, 不过rw是array, 而ro是list.  
 
 
 
 
 
+## 引用
+
+[神经病院 Objective-C Runtime 入院第一天—— isa 和 Class](https://halfrost.com/objc_runtime_isa_class/)
 
 
-
-
-[weak分析](https://github.com/HighmoreJx/Blog/blob/master/articles/%E9%9D%A2%E8%AF%95%E5%B0%8F%E9%A2%98/Objective-C%E5%B1%9E%E6%80%A7%E4%B9%8BWeak.md)文章介绍了一个全局散列表存储引用计数,但其实64位的空间是可以分配一部分来存储引用计数值的. 
+[](http://vanney9.com/2017/06/05/objective-c-runtime-property-method/)
