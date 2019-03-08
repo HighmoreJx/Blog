@@ -184,6 +184,35 @@ cls->setData(rw);
 
 rw和ro都有方法列表, 不过rw是array, 而ro是list.  
 
+ro中的method_list_t, ivar_list_t, property_list_t结构体都继承于entsize_list_tt.protocol_list_t 与前三个不同,它存储的是protocol_t*指针列表,实现比较简单.   
+
+rw中的method_array_t, property_array_t, protocal_array_t都继承自list_array_tt,可不断扩张,因为其存储list指针, 其内容有如下三种:   
+1. 空  
+2. 一个entsize_list_tt指针  
+3. entsize_list_tt指针数组  
+
+因此, 我们可以动态添加方法, 属性, 协议等. 但是实例变量就不行了, 编译期已经定死了. 其实也蛮好理解的, 之前我们说过, 方法是存在类中的, 所以动态往其添加方法不会影响什么, 但是实例变量是所以对象都独有的, 你突然增加一个, 岂不是要改全部已经布局好的对象?   
+
+### 属性, 方法, 实例变量
+
+[深入解析 ObjC 中方法的结构](https://github.com/draveness/analyze/blob/master/contents/objc/%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%20ObjC%20%E4%B8%AD%E6%96%B9%E6%B3%95%E7%9A%84%E7%BB%93%E6%9E%84.md) 具体分析过程可以看这个文章. 我直接就套结论了.  
+
+
+
+
+
+
+
+
+
+
+## 引用
+
+[神经病院 Objective-C Runtime 入院第一天—— isa 和 Class](https://halfrost.com/objc_runtime_isa_class/)
+
+
+[](http://vanney9.com/2017/06/05/objective-c-runtime-property-method/)
+
 
 
 
