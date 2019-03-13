@@ -120,8 +120,75 @@ objc_msgSend调用lookupImpOrForward函数查找方法实现.下列步骤如果�
 ![](https://raw.githubusercontent.com/HighmoreXu/BlogImage/master/images/forward_tiny.png)
 
 
+## method swizzling
 
+动态替换方法的实现, 实现hook功能.  
 
+```
+typedef struct method_t *Method;
+struct method_t {
+    SEL name;
+    const char *types;
+    IMP imp;
+};
+```
+
+1. name方法的名称, 唯一标识某个方法.   
+2. types标识方法的返回值和参数类型.  
+3. imp函数指针, 指向方法的实现.  
+
+OC的方法名是不包含参数类型的.  
+```
+- (void)viewWillAppear:(BOOL)animated;
+- (void)viewWillAppear:(NSString *)string;
+```
+上面的两个方法在runtime看来是同一个方法.  
+
+method swizzling就是改变方法名name和imp实现的对应关系.  
+
+```
+#import <objc/runtime.h>
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@"viewWillAppear: %@", self);
+}
+@end
+```
+
+上诉代码是一个简单的追踪页面显示的应用.  
+
+值得注意的点:   
+
+swizzling的逻辑是在load中实现的.  
+[Objective-C +load vs +initialize](http://blog.leichunfeng.com/blog/2015/05/02/objective-c-plus-load-vs-plus-initialize/)大致描述了两个方法的差异.分类中的load方法不会对主类的load方法造成覆盖.   
+
+swizzling总是在dispatch_once中实现.  
 
 
 
@@ -135,3 +202,9 @@ objc_msgSend调用lookupImpOrForward函数查找方法实现.下列步骤如果�
 [Objective-C runtime - 消息](http://vanney9.com/2017/06/08/objective-c-runtime-message/)
 
 [iOS 运行时之消息转发机制](http://www.enkichen.com/2017/04/21/ios-message-forwarding/)
+
+[Objective-C Runtime 运行时之四：Method Swizzling](http://southpeak.github.io/2014/11/06/objective-c-runtime-4/)  
+
+[Objective-C Method Swizzling 的最佳实践](http://blog.leichunfeng.com/blog/2015/06/14/objective-c-method-swizzling-best-practice/)  
+
+[Objective-C +load vs +initialize](http://blog.leichunfeng.com/blog/2015/05/02/objective-c-plus-load-vs-plus-initialize/)
