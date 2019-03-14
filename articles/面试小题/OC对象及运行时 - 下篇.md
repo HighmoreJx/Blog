@@ -189,8 +189,17 @@ swizzling的逻辑是在load中实现的.
 [Objective-C +load vs +initialize](http://blog.leichunfeng.com/blog/2015/05/02/objective-c-plus-load-vs-plus-initialize/)大致描述了两个方法的差异.分类中的load方法不会对主类的load方法造成覆盖.   
 
 swizzling总是在dispatch_once中实现.  
+swizzling能改变全局状态, 所以我们必须保证其原子性且代码只被执行一次.dispatch_once很好的满足了这个需求.  
 
 
+无限循环了吗?    
+```
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@"viewWillAppear: %@", self);
+}
+```
+晃一眼可能觉得无限循环了, 其实不然, 这里因为方法交换的关系xxx_viewWillAppear会去执行未交换前的viewWillAppear的实现.  
 
 
 
