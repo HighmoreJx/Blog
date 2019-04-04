@@ -1,0 +1,173 @@
+
+## 前言
+Controller抛开View, 就是一个很普通的对象, 它的析构和构造和普通的OC类没有什么区别.  
+controller有一个view属性, 这个view是其维护的视图层次的根视图. 其中view采用了懒加载的方式.  
+我们所要探究的生命周期指代的就是其维护的视图层次的不同执行阶段.   
+
+[UIViewController-UIView-LifecycleDemo](https://github.com/kingcos/UIViewController-UIView-LifecycleDemo)这篇文章的demo就很清晰的验证了各个阶段.  
+
+## 加载视图资源 
+
+### 从storyboard加载
+
+生成storyboard, 调用instantiateViewControllerWithIdentifier  
+从Nib文件加载:  initWithNibName:bundle:  
+从loadview方法加载:  loadView  
+
+### 从故事板加载VC  
+init(coder:) -> awakeFromNib()
+
+awakeFromNib():   
+1. 调用该方法时, 将保证所有的outlet和action连接已经完成.  
+2. 必须调用父类该方法.    
+3. 可以在该方法出处理无法在故事板中直接设置的情况.比如UI根据不同的用户设置展示不同的效果等.  
+4. 只会调用一次, 因为它和controller从nib文件中解档密切相关, 和view的关系不大.  
+
+### 纯代码或xib加载VC 
+init(nibName:bundle:)   
+纯代码传nil, 否则传对应名称   
+
+## 视图的呈现与消失
+```
+loadView()
+viewDidLoad()
+viewWillAppear
+viewWillLayoutSubviews() 
+viewDidLayoutSubviews()
+viewDidAppear
+viewWillDisappear
+viewDidDisappear
+deinit
+```
+
+### loadView()
+1. vc访问view属性且view为nil时被调用(懒加载).  
+2. nibName去查找Nib文件,未找到则创建空白实体.  
+3. 可以使用该方法手动创建视图，且需要将根视图分配为 view；自定义实现不应该再调用父类的该方法.  
+
+### viewDidLoad()
+1. view被加载到内存以后调用.
+2. 额外初始化工作, 比如添加子控件, 添加约束.  
+
+### viewWillAppear(_:)
+view即将显示在屏幕上.还没有设置动画, 可改变当前屏幕方向或状态栏风格.  
+
+### viewWillLayoutSubviews()
+即将开始子视图位置布局
+
+### viewDidLayoutSubviews()
+通知视图的位置布局已经完成
+
+### viewDidAppear(_:)
+视图已经展示在屏幕上
+
+### viewWillDisappear(_:)
+视图即将消失
+
+### viewDidDisappear(_:)
+视图已经消失
+
+### didReceiveMemoryWarning()
+内存预警
+
+### deinit
+控制器销毁
+
+
+## 视图更新周期  
+
+![](https://raw.githubusercontent.com/HighmoreJx/BlogImage/master/updatecycle.png)
+
+
+RunLoop = Main Run Loop + Update Cycle
+为了便于理解,可以将整个App的RunLoop看做是由以上两个阶段组成.  
+App在Main Run Loop阶段, 如果需要重新绘制, 布局等等.会给对应视图做好标记,
+等到Update Cycle时会真正开始对视图进行修改.整篇文章也围绕着以上理解展开.  
+
+
+### 布局
+视图在屏幕的位置和大小   
+
+#### API
+```
+//系统告诉我们,视图布局重新计算了.如果视图的自动调整大小和基于约束的行为实现不了想要的效果时, 覆写该方法来调整.
+layoutSubviews()
+//我们通知系统视图的布局已经更改.
+setNeedsLayout()
+layoutIfNeeded()
+```
+
+#### 触发
+layoutSubviews调整当前视图及所有子视图的位置和大小.  
+
+自动触发条件:   
+1. addSubView: 容器视图及子视图都会触发.  
+2. resizing a view: 大小改变, 会优先调用superview的layoutSubviews,然后再调用其子类的.  
+3. 滚动scrollView时scrollView及scrollView的superview会触发.  
+4. 用户旋转设备.  
+5. 更新视图约束.  
+
+主动触发条件:   
+前言我们已经提到过, runloop = main run loop + update cycle.对显示内容的改变主要是在update cycle里面进行的.  
+那我们如何主动告诉系统, 这边有改动, 等你进行到update cycle的时候, 记得重新layoutSubviews呢?  
+setNeedsLayout()就能很好做到这点.主动调用该方法时, 会做一个标记.等到下一个update cycle时, 便会执行布局.  
+这个可以理解为一个异步操作,即执行setNeedsLayout, 其会立即返回, 然后update cycle时才真正重新布局.  
+
+那如果我们想立即重新布局呢?  
+layoutIfNeeded()相比于setNeedsLayout(),它是一个同步的调用, 即调用后不会再等待下一个update cycle.  
+会直接让系统检测是不是需要重新布局.
+
+[How do I animate constraint changes](https://stackoverflow.com/questions/12622424/how-do-i-animate-constraint-changes)这个问题还可以简单了解一下layoutIfNeeded的场景.  
+
+### 显示
+
+视图的显示包括颜色, 文本, 图片和graphics绘制等.  
+
+#### API
+
+```
+- (void)drawRect:(CGRect)rect;
+- (void)setNeedsDisplay;
+```
+其大致和layout类似, 不过draw不会调用其子类的draw而且也没有layoutIfNeed这样的立即进入update cycle方法.  
+
+### 约束
+autolayout那一套.  
+
+#### API
+```
+updateConstraints()
+setNeedsUpdateConstraints()
+updateConstraintsIfNeeded()
+invalidateIntrinsicContentSize()
+```
+
+前三个方法和layout的一一对应.  
+invalidateIntrinsicContentSize即告诉系统, view的intrinsicContentSize需要在下一个update cycle重新计算.  
+
+### 联系
+
+![](https://raw.githubusercontent.com/HighmoreJx/BlogImage/master/layoutdrawconstraint.png)
+
+
+上面那幅图将三者区别及API分别的作用很好的总结了.原文在参考链接里面.  
+
+![](https://raw.githubusercontent.com/HighmoreJx/BlogImage/master/update_cycle.png)
+
+
+三者串联起来的流程大致如上图所示, 约束更改了最终也是更改layout, 而只有layout大小位置确定了,才能说绘制里面的东西.所以三者顺序也很好理解.  
+
+
+## 引用
+[What is the process of a UIViewController birth](https://stackoverflow.com/questions/5107604/what-is-the-process-of-a-uiviewcontroller-birth-which-method-follows-which)
+
+[再见，viewDidUnload方法](http://blog.devtang.com/2013/05/18/goodbye-viewdidunload/)
+
+[UIViewController-UIView-LifecycleDemo](https://github.com/kingcos/UIViewController-UIView-LifecycleDemo/blob/master/UIViewController_Lifecycle.md)
+
+[uiview-life-time](https://github.com/bestswifter/blog/blob/master/articles/uiview-life-time.md)
+
+[Demystifying iOS Layout](http://tech.gc.com/demystifying-ios-layout/)
+
+
+
