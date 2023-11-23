@@ -1,0 +1,19 @@
+import pandas as pd
+
+# 读取txt文档内容，以,拆分成数组
+with open('your_text_file.txt', 'r', encoding='utf-8') as txt_file:
+    txt_content = txt_file.read()
+    array_from_txt = txt_content.split(',')
+
+# 读取指定的excel文件
+excel_file_path = 'your_excel_file.xlsx'
+df = pd.read_excel(excel_file_path)
+
+# 筛选出包含在数组中的行
+filtered_df = df[df.iloc[:, 0].isin(array_from_txt)]
+
+# 将筛选后的数据写入新的Excel文件
+result_excel_path = 'result_excel_file.xlsx'
+filtered_df.to_excel(result_excel_path, index=False)
+
+print(f"筛选后的数据已保存到 {result_excel_path}")
